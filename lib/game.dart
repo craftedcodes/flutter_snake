@@ -2,11 +2,15 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'model/board.dart';
 import 'model/snake.dart';
 import 'model/user.dart';
+import 'services/route_service.dart';
+import 'services/user_service.dart';
 import 'utils/bot.dart';
+import 'utils/dialogs.dart';
 
 class Game extends StatefulWidget {
   final User user;
@@ -120,7 +124,9 @@ class _GameState extends State<Game> {
   initializeGameLoop() {
     timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       updateGame();
-      // TODO: detect game over
+      if (gameOver()) {
+        finishGame(context);
+      }
     });
   }
 
@@ -136,6 +142,59 @@ class _GameState extends State<Game> {
       moveSnake();
       detectCollision();
     });
+  }
+
+  gameOver() {
+    for (var i = 0; i < snake.positions.length; i++) {
+      var count = 0;
+      for (var j = 0; j < snake.positions.length; j++) {
+        for (var x = 0; x < bots.length; x++) {
+          for (var t = 0; t < bots[x].positions.length; t++) {
+            if (snake.positions[i] == bots[x].positions[t]) {
+              count = 2;
+            }
+          }
+        }
+        if (snake.positions[i] == snake.positions[j]) {
+          count += 1;
+        }
+        if (count == 2) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  finishGame(context) async {
+    final routeService = Provider.of<RouteService>(context, listen: false);
+    timer.cancel();
+    await saveProgress();
+    removeBots();
+    showGameOverDialog(context, snake, () {
+      restartGame();
+      Navigator.pop(context);
+    }, () {
+      Navigator.pop(context);
+      routeService.navigate(0);
+    });
+  }
+
+  saveProgress() async {
+    final userService = Provider.of<UserService>(context, listen: false);
+    await userService.updatePreferences(snake);
+  }
+
+  removeBots() {
+    setState(() {
+      for (var x = 0; x < bots.length; x++) {
+        bots.remove(bots[x]);
+      }
+    });
+  }
+
+  restartGame() {
+    startGame();
   }
 
   checkToSpawnBot() {
