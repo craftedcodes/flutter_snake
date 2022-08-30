@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'model/board.dart';
 import 'model/snake.dart';
 import 'model/user.dart';
+import 'utils/bot.dart';
 
 class Game extends StatefulWidget {
   final User user;
@@ -125,9 +126,84 @@ class _GameState extends State<Game> {
 
   updateGame() {
     setState(() {
+      //
+      checkToSpawnBot();
+      if (bots.isNotEmpty) {
+        moveBots();
+      }
+      //
+
       moveSnake();
       detectCollision();
     });
+  }
+
+  checkToSpawnBot() {
+    if (snake.score >= 20 && bots.isEmpty && placeHolderBots.isEmpty) {
+      spawnBots();
+    }
+    if (snake.score >= 50 && bots.length == 1 && placeHolderBots.isEmpty) {
+      spawnBots();
+    }
+  }
+
+  spawnBots() {
+    var direction = random.nextInt(3);
+    var position = random.nextInt(botRange);
+    var positions =
+        generateRandomPositionList(directions[direction], position, 5);
+    Snake bot1 = Snake(
+        name: "bot 1",
+        color: Colors.red,
+        direction: directions[direction],
+        score: 0,
+        positions: positions);
+    setState(() {
+      placeHolderBots.add(bot1);
+    });
+    Future.delayed(
+        const Duration(seconds: 3),
+        () => setState(() {
+              placeHolderBots.remove(bot1);
+              bots.add(bot1);
+            }));
+  }
+
+  moveBots() {
+    for (var i in bots) {
+      switch (i.direction) {
+        case "down":
+          if (i.positions.last > numberOfSquares - 20) {
+            i.positions.add(i.positions.last + 20 - numberOfSquares);
+          } else {
+            i.positions.add(i.positions.last + 20);
+          }
+          break;
+        case "up":
+          if (i.positions.last < 20) {
+            i.positions.add(i.positions.last - 20 + numberOfSquares);
+          } else {
+            i.positions.add(i.positions.last - 20);
+          }
+          break;
+        case "left":
+          if (i.positions.last % 20 == 0) {
+            i.positions.add(i.positions.last - 1 + 20);
+          } else {
+            i.positions.add(i.positions.last - 1);
+          }
+          break;
+        case "right":
+          if ((i.positions.last + 1) % 20 == 0) {
+            i.positions.add(i.positions.last + 1 - 20);
+          } else {
+            i.positions.add(i.positions.last + 1);
+          }
+          break;
+        default:
+      }
+      i.positions.removeAt(0);
+    }
   }
 
   moveSnake() {
@@ -249,28 +325,35 @@ class _GameState extends State<Game> {
                 }
               },
               child: GridView.builder(
-                  itemCount: numberOfSquares,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 20),
-                  itemBuilder: (context, index) {
-                    //* This code will detect if any of the snake positions (aka squares that represent the snake contains certain index) and if it does, it will render the snake part. Otherwise, it will check for the other items such as food, coin and bots.
-                    if (snake.positions.contains(index)) {
-                      return snakePart();
-                    } else if (food == index) {
-                      return foodPart();
-                    } else if (coin == index) {
-                      return coinPart();
-                    } else {
-                      for (var i = 0; i < bots.length; i++) {
-                        if (bots[i].positions.contains(index)) {
-                          return botPart();
-                        }
+                itemCount: numberOfSquares,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 20),
+                itemBuilder: (context, index) {
+                  //* This code will detect if any of the snake positions (aka squares that represent the snake contains certain index) and if it does, it will render the snake part. Otherwise, it will check for the other items such as food, coin and bots.
+                  if (snake.positions.contains(index)) {
+                    return snakePart();
+                  } else if (food == index) {
+                    return foodPart();
+                  } else if (coin == index) {
+                    return coinPart();
+                  } else {
+                    for (var i = 0; i < bots.length; i++) {
+                      if (bots[i].positions.contains(index)) {
+                        return botPart();
+                      }
+                    }
+                    for (var i = 0; i < placeHolderBots.length; i++) {
+                      if (placeHolderBots[i].positions.contains(index)) {
+                        // ignore: prefer_const_constructors
+                        return PlaceHolderBot();
                       }
                     }
 
                     return boardSquare();
-                  }),
+                  }
+                },
+              ),
             ),
             Align(
               alignment: Alignment.topCenter,
