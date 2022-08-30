@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<RouteService>(
           create: (_) => RouteService(),
         ),
-      ], child: Menu()),
+      ], child: const Menu()),
     );
   }
 }
