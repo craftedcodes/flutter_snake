@@ -118,8 +118,64 @@ class _GameState extends State<Game> {
 
   initializeGameLoop() {
     timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      // TODO: update the game
+      updateGame();
+      // TODO: detect game over
     });
+  }
+
+  updateGame() {
+    setState(() {
+      moveSnake();
+      detectCollision();
+    });
+  }
+
+  moveSnake() {
+    switch (snake.direction) {
+      case "down":
+        // LAST ROW OF GRIDS
+        if (snake.positions.last > numberOfSquares - 20) {
+          snake.positions.add(snake.positions.last + 20 - numberOfSquares);
+        } else {
+          snake.positions.add(snake.positions.last + 20);
+        }
+        break;
+      case "up":
+        if (snake.positions.last < 20) {
+          snake.positions.add(snake.positions.last - 20 + numberOfSquares);
+        } else {
+          snake.positions.add(snake.positions.last - 20);
+        }
+        break;
+      case "left":
+        if (snake.positions.last % 20 == 0) {
+          snake.positions.add(snake.positions.last - 1 + 20);
+        } else {
+          snake.positions.add(snake.positions.last - 1);
+        }
+        break;
+      case "right":
+        if ((snake.positions.last + 1) % 20 == 0) {
+          snake.positions.add(snake.positions.last + 1 - 20);
+        } else {
+          snake.positions.add(snake.positions.last + 1);
+        }
+        break;
+      default:
+    }
+    snake.positions.removeAt(0);
+  }
+
+  detectCollision() {
+    if (snake.positions.last == coin) {
+      snake.coins += 50;
+      coin = randomCoin.nextInt(foodRange);
+    } else if (snake.positions.last == food) {
+      snake.score += 20;
+      food = random.nextInt(foodRange);
+    } else {
+      snake.positions.removeAt(0);
+    }
   }
 
   //* It takes a direction, an initial position and a snake length and returns a list of positions that the snake will occupy
@@ -177,29 +233,45 @@ class _GameState extends State<Game> {
       body: SafeArea(
         child: Stack(
           children: [
-            GridView.builder(
-                itemCount: numberOfSquares,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 20),
-                itemBuilder: (context, index) {
-                  //* This code will detect if any of the snake positions (aka squares that represent the snake contains certain index) and if it does, it will render the snake part. Otherwise, it will check for the other items such as food, coin and bots.
-                  if (snake.positions.contains(index)) {
-                    return snakePart();
-                  } else if (food == index) {
-                    return foodPart();
-                  } else if (coin == index) {
-                    return coinPart();
-                  } else {
-                    for (var i = 0; i < bots.length; i++) {
-                      if (bots[i].positions.contains(index)) {
-                        return botPart();
+            GestureDetector(
+              onVerticalDragUpdate: (details) {
+                if (snake.direction != "up" && details.delta.dy > 0) {
+                  snake.direction = "down";
+                } else if (snake.direction != "down" && details.delta.dy < 0) {
+                  snake.direction = "up";
+                }
+              },
+              onHorizontalDragUpdate: (details) {
+                if (snake.direction != "left" && details.delta.dx > 0) {
+                  snake.direction = "right";
+                } else if (snake.direction != "right" && details.delta.dx < 0) {
+                  snake.direction = "left";
+                }
+              },
+              child: GridView.builder(
+                  itemCount: numberOfSquares,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 20),
+                  itemBuilder: (context, index) {
+                    //* This code will detect if any of the snake positions (aka squares that represent the snake contains certain index) and if it does, it will render the snake part. Otherwise, it will check for the other items such as food, coin and bots.
+                    if (snake.positions.contains(index)) {
+                      return snakePart();
+                    } else if (food == index) {
+                      return foodPart();
+                    } else if (coin == index) {
+                      return coinPart();
+                    } else {
+                      for (var i = 0; i < bots.length; i++) {
+                        if (bots[i].positions.contains(index)) {
+                          return botPart();
+                        }
                       }
                     }
-                  }
 
-                  return boardSquare();
-                }),
+                    return boardSquare();
+                  }),
+            ),
             Align(
               alignment: Alignment.topCenter,
               child: Padding(
@@ -285,7 +357,7 @@ class _GameState extends State<Game> {
           style: TextStyle(color: Colors.white.withOpacity(.5), fontSize: 25),
         ),
         Text(
-          "PLACEHOLDER",
+          snake.score.toString(),
           style: TextStyle(color: Colors.white.withOpacity(.5), fontSize: 25),
         ),
       ],
@@ -304,7 +376,7 @@ class _GameState extends State<Game> {
           width: 5,
         ),
         Text(
-          "PLACEHOLDER",
+          snake.coins.toString(),
           style: TextStyle(color: Colors.white.withOpacity(.5), fontSize: 25),
         ),
       ],
